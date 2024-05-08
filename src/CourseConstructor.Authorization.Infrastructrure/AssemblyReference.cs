@@ -1,5 +1,6 @@
 ﻿namespace CourseConstructor.Authorization.Infrastructrure;
 
-public class Class1
+public class AssemblyReference
 {
+    
 }

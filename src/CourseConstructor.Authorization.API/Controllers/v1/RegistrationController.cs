@@ -21,12 +21,15 @@ public class RegistrationController : BaseController
     {
         return Ok(new {IsSuccess = false});
     }
-    
+    /// <summary>
+    /// test
+    /// </summary>
+    /// <param name="loginDto"></param>
+    /// <returns></returns>
     [HttpPost("authenticate")]
     public IActionResult Authenticate([FromBody] LoginDto loginDto)
     {
-        // Проверка учетных данных и генерация токенов
-        var userId = "your_user_id"; // Получите идентификатор пользователя из БД или другого источника
+        var userId = "your_user_id";
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.Name, userId) // Пример добавления идентификатора пользователя в токен как пример
@@ -39,11 +42,10 @@ public class RegistrationController : BaseController
     [HttpPost("refresh")]
     public IActionResult RefreshToken([FromBody] RefreshTokenDto refreshTokenDto)
     {
-        // Проверка и обновление токена
-        var userId = "your_user_id"; // Получите идентификатор пользователя из RefreshTokenDto или другого источника
+        var userId = "your_user_id";
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.Name, userId) // Пример добавления идентификатора пользователя в токен как пример
+            new Claim(ClaimTypes.Name, userId)
         };
 
         var token = _jwtTokenService.GenerateTokens(userId, claims);
