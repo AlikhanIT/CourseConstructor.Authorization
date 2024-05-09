@@ -1,16 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Security.Claims;
-using System.Threading.Tasks;
+﻿using System.Security.Claims;
 using CourseConstructor.Authorization.API.Controllers.Base;
-using CourseConstructor.Authorization.Core.Entities;
+using CourseConstructor.Authorization.Core.CQRS.Users.Commands.AuthentificateCommand;
+using CourseConstructor.Authorization.Core.CQRS.Users.Commands.RefreshTokenCommand;
+using CourseConstructor.Authorization.Core.CQRS.Users.Commands.RegisterCommand;
 using CourseConstructor.Authorization.Core.Entities.Models;
 using CourseConstructor.Authorization.Core.Entities.Requests;
-using CourseConstructor.Authorization.Core.Interfaces;
+using CourseConstructor.Authorization.Core.Interfaces.Providers;
 using CourseConstructor.Authorization.Core.Interfaces.Repositories;
+using CourseConstructor.Authorization.Core.Interfaces.Services;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 
 namespace CourseConstructor.Authorization.API.Controllers.v1
 {
@@ -23,14 +23,31 @@ namespace CourseConstructor.Authorization.API.Controllers.v1
     public class RegistrationController : BaseController
     {
         private readonly IJwtTokenService _jwtTokenService;
+        private readonly ISender _sender;
         private readonly IUserRepository _userRepository;
-
+        private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly ILogger<RegistrationController> _logger;
+        /// <summary>
+        /// Инъекция базовых зависимостей
+        /// </summary>
+        /// <param name="jwtTokenService"></param>
+        /// <param name="userRepository"></param>
+        /// <param name="logger"></param>
+        /// <param name="sender"></param>
+        /// <param name="dateTimeProvider"></param>
+        /// <exception cref="ArgumentNullException"></exception>
         public RegistrationController(
             IJwtTokenService jwtTokenService, 
-            IUserRepository userRepository) : base()
+            IUserRepository userRepository,
+            ILogger<RegistrationController> logger, 
+            ISender sender, 
+            IDateTimeProvider dateTimeProvider) : base()
         {
             _jwtTokenService = jwtTokenService ?? throw new ArgumentNullException(nameof(jwtTokenService));
             _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _sender = sender;
+            _dateTimeProvider = dateTimeProvider;
         }
 
         /// <summary>
@@ -39,37 +56,24 @@ namespace CourseConstructor.Authorization.API.Controllers.v1
         /// <param name="registerDto">Данные для регистрации пользователя.</param>
         /// <returns>Результат регистрации.</returns>
         [HttpPost("register")]
+        [ProducesResponseType(typeof(JwtToken), 200)]
         [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
         {
-            if (registerDto == null || string.IsNullOrWhiteSpace(registerDto.Username) || string.IsNullOrWhiteSpace(registerDto.Password))
-                return BadRequest(new { Message = "Пожалуйста, заполните все поля." });
-
-            // Проверяем, не занят ли уже логин.
-            var existingUser = await _userRepository.GetByUsernameAsync(registerDto.Username);
-            if (existingUser != null)
-                return Conflict(new { Message = "Этот логин уже используется." });
-
-            // Создаем хэш пароля.
-            var passwordHash = HashPassword(registerDto.Password);
-
-            // Создаем и сохраняем нового пользователя.
-            var user = new User
+            using (_logger.BeginScope("Registering user {Username}", registerDto?.Username))
             {
-                Id = Guid.NewGuid(),
-                Username = registerDto.Username,
-                PasswordHash = passwordHash
-            };
-            
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, user.Id.ToString())
-            };
-            var token = _jwtTokenService.GenerateTokens(user.Id.ToString(), claims);
+                _logger.LogInformation("Начало процесса регистрации.");
+                var result = await _sender.Send(new RegisterCommand(registerDto!.Username, registerDto!.Password));
 
-            await _userRepository.AddUserAsync(user.SetRefreshToken(token.RefreshToken));
-
-            return Ok(token);
+                if (result.IsSuccess)
+                {
+                    _logger.LogInformation("Регистрация пользователя {Username} завершена успешно.", registerDto.Username);
+                    return Ok(result.Value);
+                }
+                
+                _logger.LogError("Регистрация пользователя {Username} не завершена.", registerDto.Username);
+                return BadRequest(result);
+            }
         }
 
         /// <summary>
@@ -78,28 +82,24 @@ namespace CourseConstructor.Authorization.API.Controllers.v1
         /// <param name="loginDto">Данные для входа пользователя.</param>
         /// <returns>Сгенерированный JWT токен, если аутентификация успешна.</returns>
         [HttpPost("authenticate")]
+        [ProducesResponseType(typeof(JwtToken), 200)]
         [AllowAnonymous]
         public async Task<IActionResult> Authenticate([FromBody] LoginDto loginDto)
         {
-            if (loginDto == null || string.IsNullOrWhiteSpace(loginDto.Username) || string.IsNullOrWhiteSpace(loginDto.Password))
-                return BadRequest(new { Message = "Пожалуйста, заполните все поля." });
-
-            // Поиск пользователя по логину.
-            var user = await _userRepository.GetByUsernameAsync(loginDto.Username);
-            if (user == null || !VerifyPassword(loginDto.Password, user.PasswordHash))
-                return Unauthorized(new { Message = "Неверный логин или пароль." });
-
-            // Генерация JWT токенов.
-            var claims = new List<Claim>
+            using (_logger.BeginScope("Registering user {Username}", loginDto?.Username))
             {
-                new Claim(ClaimTypes.Name, user.Id.ToString())
-            };
-            
-            var token = _jwtTokenService.GenerateTokens(user.Id.ToString(), claims);
+                _logger.LogInformation("Начало процесса аутентификации.");
+                var result = await _sender.Send(new AuthentificateCommand(loginDto!.Username, loginDto!.Password));
 
-            _userRepository.UpdateUserAsync(user.SetRefreshToken(token.RefreshToken));
-
-            return Ok(token);
+                if (result.IsSuccess)
+                {
+                    _logger.LogInformation("Аутентификация пользователя {Username} завершена успешно.", loginDto.Username);
+                    return Ok(result.Value);
+                }
+                
+                _logger.LogError("Аутентификация пользователя {Username} не завершена.", loginDto.Username);
+                return BadRequest(result);
+            }
         }
 
         /// <summary>
@@ -108,83 +108,24 @@ namespace CourseConstructor.Authorization.API.Controllers.v1
         /// <param name="refreshTokenDto">Содержит рефреш-токен для генерации новых токенов.</param>
         /// <returns>Новый JWT токен при корректном рефреш-токене.</returns>
         [HttpPost("refresh")]
+        [ProducesResponseType(typeof(JwtToken), 200)]
         [AllowAnonymous]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenDto refreshTokenDto)
         {
-            if (refreshTokenDto == null || string.IsNullOrWhiteSpace(refreshTokenDto.RefreshToken))
-                return BadRequest(new { Message = "Пожалуйста, предоставьте действительный рефреш-токен." });
-
-            // Найдите пользователя по его рефреш-токену.
-            var user = await _userRepository.GetByIdAsync(refreshTokenDto.UserId);
-            if (user == null || user.RefreshToken != refreshTokenDto.RefreshToken)
+            using (_logger.BeginScope("Registering user {Username}", refreshTokenDto?.UserId))
             {
-                return Unauthorized(new { Message = "Недействительный или истекший рефреш-токен." });
+                _logger.LogInformation("Начало процесса продления сеанса.");
+                var result = await _sender.Send(new RefreshTokenCommand(refreshTokenDto!.UserId, refreshTokenDto!.RefreshToken));
+
+                if (result.IsSuccess)
+                {
+                    _logger.LogInformation("Продление сеанса пользователя {Username} завершена успешно.", refreshTokenDto.UserId);
+                    return Ok(result.Value);
+                }
+                
+                _logger.LogError("Продление сеанса пользователя {Username} не завершена.", refreshTokenDto.UserId);
+                return BadRequest(result);
             }
-
-            // Генерируем новые токены и обновляем рефреш-токен.
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, user.Id.ToString())
-            };
-
-            var token = _jwtTokenService.GenerateTokens(user.Id.ToString(), claims);
-            if (token == null)
-                return Unauthorized(new { Message = "Ошибка генерации токенов." });
-
-            // Обновляем рефреш-токен пользователя.
-            user.RefreshToken = token.RefreshToken;
-            user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7); // Пример: 7 дней для рефреш-токена.
-
-            await _userRepository.UpdateUserAsync(user);
-
-            return Ok(token);
-        }
-
-        /// <summary>
-        /// Хэширует пароль с использованием случайной соли.
-        /// </summary>
-        /// <param name="password">Пароль, который нужно захэшировать.</param>
-        /// <returns>Хэшированный пароль.</returns>
-        private string HashPassword(string password)
-        {
-            // Используем криптографическое хэширование пароля с солью.
-            byte[] salt = new byte[16];
-            using (var rng = new System.Security.Cryptography.RNGCryptoServiceProvider())
-                rng.GetBytes(salt);
-
-            var hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
-                password: password,
-                salt: salt,
-                prf: KeyDerivationPrf.HMACSHA256,
-                iterationCount: 10000,
-                numBytesRequested: 32));
-
-            return $"{Convert.ToBase64String(salt)}:{hashed}";
-        }
-
-        /// <summary>
-        /// Проверяет пароль на соответствие хэшированному значению.
-        /// </summary>
-        /// <param name="password">Оригинальный пароль.</param>
-        /// <param name="storedHash">Хэшированное значение пароля, сохраненное в базе данных.</param>
-        /// <returns>True, если пароль совпадает с хэшированным значением, иначе False.</returns>
-        private bool VerifyPassword(string password, string storedHash)
-        {
-            var parts = storedHash.Split(':');
-            if (parts.Length != 2)
-                return false;
-
-            var salt = Convert.FromBase64String(parts[0]);
-            var storedPasswordHash = parts[1];
-
-            var computedHash = Convert.ToBase64String(KeyDerivation.Pbkdf2(
-                password: password,
-                salt: salt,
-                prf: KeyDerivationPrf.HMACSHA256,
-                iterationCount: 10000,
-                numBytesRequested: 32));
-
-            return storedPasswordHash == computedHash;
         }
     }
 }

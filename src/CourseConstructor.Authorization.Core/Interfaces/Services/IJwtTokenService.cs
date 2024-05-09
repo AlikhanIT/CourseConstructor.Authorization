@@ -1,15 +1,11 @@
 ﻿using System.Security.Claims;
+using CourseConstructor.Authorization.Core.Entities.Models;
 
-namespace CourseConstructor.Authorization.Core.Interfaces;
+namespace CourseConstructor.Authorization.Core.Interfaces.Services;
 
 public interface IJwtTokenService
 {
     JwtToken GenerateTokens(string userId, IEnumerable<Claim> claims);
     ClaimsPrincipal GetPrincipalFromExpiredToken(string token);
-}
-
-public class JwtToken
-{
-    public string AccessToken { get; set; }
-    public string RefreshToken { get; set; }
+    bool ValidateRefreshToken(string refreshToken);
 }

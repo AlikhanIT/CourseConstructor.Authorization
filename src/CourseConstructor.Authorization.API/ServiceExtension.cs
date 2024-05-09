@@ -1,8 +1,9 @@
 using System.Reflection;
 using CourseConstructor.Authorization.API.Features.Middlewares;
 using CourseConstructor.Authorization.Core.Common.Behaivors;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using MediatR;
-using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi.Models;
 using Serilog;
 
@@ -18,7 +19,9 @@ internal static class ServiceExtension
     internal static IServiceCollection ConfigureMediatR(this IServiceCollection services)
     {
         return services.AddMediatR(typeof(Program))
-            .AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehaivor<,>));
+            .AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehaivor<,>))
+            .AddFluentValidationAutoValidation()
+            .AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
     }
     
     internal static void ConfigureSerilog(this WebApplicationBuilder host, IConfiguration configuration)
