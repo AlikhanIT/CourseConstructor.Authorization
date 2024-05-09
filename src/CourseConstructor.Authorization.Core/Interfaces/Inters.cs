@@ -8,15 +8,6 @@ public interface IJwtTokenService
     ClaimsPrincipal GetPrincipalFromExpiredToken(string token);
 }
 
-public class JwtTokenSettings
-{
-    public string SecretKey { get; set; }
-    public string Issuer { get; set; }
-    public string Audience { get; set; }
-    public int AccessTokenExpirationMinutes { get; set; }
-    public int RefreshTokenExpirationDays { get; set; }
-}
-
 public class JwtToken
 {
     public string AccessToken { get; set; }

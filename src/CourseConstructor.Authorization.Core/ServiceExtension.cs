@@ -52,6 +52,7 @@ public static class ServiceExtension
     public static IServiceCollection ConfigureOptions(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<TestOptions>(configuration.GetSection(TestOptions.SectionName));
+        services.Configure<JwtTokenSettingsOptions>(configuration.GetSection(JwtTokenSettingsOptions.SectionName));
 
         return services;
     }

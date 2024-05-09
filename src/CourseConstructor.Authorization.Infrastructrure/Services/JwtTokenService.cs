@@ -2,6 +2,7 @@
 using System.Security.Claims;
 using System.Text;
 using CourseConstructor.Authorization.Core.Interfaces;
+using CourseConstructor.Authorization.Core.Options;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -9,34 +10,34 @@ namespace CourseConstructor.Authorization.Infrastructrure.Services;
 
 public class JwtTokenService : IJwtTokenService
 {
-    private readonly JwtTokenSettings _jwtTokenSettings;
+    private readonly JwtTokenSettingsOptions _jwtTokenSettingsOptions;
 
-    public JwtTokenService(IOptions<JwtTokenSettings> jwtTokenSettings)
+    public JwtTokenService(IOptions<JwtTokenSettingsOptions> jwtTokenSettingsOptions)
     {
-        _jwtTokenSettings = jwtTokenSettings.Value;
+        _jwtTokenSettingsOptions = jwtTokenSettingsOptions.Value;
     }
 
     public JwtToken GenerateTokens(string userId, IEnumerable<Claim> claims)
     {
         try
         {
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtTokenSettings.SecretKey));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtTokenSettingsOptions.SecretKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var accessTokenExpiration = DateTime.UtcNow.AddMinutes(_jwtTokenSettings.AccessTokenExpirationMinutes);
-            var refreshTokenExpiration = DateTime.UtcNow.AddDays(_jwtTokenSettings.RefreshTokenExpirationDays);
+            var accessTokenExpiration = DateTime.UtcNow.AddMinutes(_jwtTokenSettingsOptions.AccessTokenExpirationMinutes);
+            var refreshTokenExpiration = DateTime.UtcNow.AddDays(_jwtTokenSettingsOptions.RefreshTokenExpirationDays);
 
             var accessToken = new JwtSecurityToken(
-                _jwtTokenSettings.Issuer,
-                _jwtTokenSettings.Audience,
+                _jwtTokenSettingsOptions.Issuer,
+                _jwtTokenSettingsOptions.Audience,
                 claims,
                 expires: accessTokenExpiration,
                 signingCredentials: creds
             );
 
             var refreshToken = new JwtSecurityToken(
-                _jwtTokenSettings.Issuer,
-                _jwtTokenSettings.Audience,
+                _jwtTokenSettingsOptions.Issuer,
+                _jwtTokenSettingsOptions.Audience,
                 claims,
                 expires: refreshTokenExpiration,
                 signingCredentials: creds
@@ -60,12 +61,12 @@ public class JwtTokenService : IJwtTokenService
         var tokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtTokenSettings.SecretKey)),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtTokenSettingsOptions.SecretKey)),
             ValidateIssuer = true,
-            ValidIssuer = _jwtTokenSettings.Issuer,
+            ValidIssuer = _jwtTokenSettingsOptions.Issuer,
             ValidateAudience = true,
-            ValidAudience = _jwtTokenSettings.Audience,
-            ValidateLifetime = false // because tokens have expiration time
+            ValidAudience = _jwtTokenSettingsOptions.Audience,
+            ValidateLifetime = false
         };
 
         var tokenHandler = new JwtSecurityTokenHandler();

@@ -1,3 +1,4 @@
+using CourseConstructor.Authorization.Core.Entities.Models;
 using CourseConstructor.Authorization.Core.Interfaces.Entities;
 using CourseConstructor.Authorization.Core.Interfaces.Persistance;
 using CourseConstructor.Authorization.Core.Interfaces.Providers;
@@ -11,8 +12,18 @@ public class Context : DbContext, IContext
     public Context(DbContextOptions<Context> options, IDateTimeProvider dateTimeProvider) 
         :base(options)
     {
+        Database.EnsureCreated();
     }
-    
+    public DbSet<User> Users { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Username)
+            .IsUnique();
+    }
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
         UpdateTimestamps();

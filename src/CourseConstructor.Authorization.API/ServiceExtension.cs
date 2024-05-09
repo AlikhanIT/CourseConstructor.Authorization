@@ -3,6 +3,7 @@ using CourseConstructor.Authorization.API.Features.Middlewares;
 using CourseConstructor.Authorization.Core.Common.Behaivors;
 using MediatR;
 using Microsoft.Extensions.Configuration;
+using Microsoft.OpenApi.Models;
 using Serilog;
 
 namespace CourseConstructor.Authorization.API;
@@ -36,6 +37,31 @@ internal static class ServiceExtension
             var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
             var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
             c.IncludeXmlComments(xmlPath);
+            c.SwaggerDoc( "v1", new OpenApiInfo()
+            {
+                Version = "v1",
+                Title = "Shop API",
+                Description = "Пример ASP .NET Core Web API",
+                Contact = new OpenApiContact
+                {
+                    Name = "Пример контакта",
+                    Url = new Uri("https://example.com/contact")
+                },
+                License = new OpenApiLicense
+                {
+                    Name = "Пример лицензии",
+                    Url = new Uri("https://example.com/license")
+                }
+            });
+            c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+            {
+                Description = @"Введите JWT токен авторизации.",
+                Name = "Authorization",
+                In = ParameterLocation.Header,
+                Type = SecuritySchemeType.ApiKey,
+                BearerFormat = "JWT",
+                Scheme = "Bearer"
+            });
         });
         
         return services;

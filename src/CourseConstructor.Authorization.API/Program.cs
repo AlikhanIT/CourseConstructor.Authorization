@@ -30,7 +30,8 @@ builder.Services.AddScopedServices()
 // configure Infrastructure layer
 builder.Services.ConfigurePersistance(builder.Configuration)
     .ConfigureCaching(builder.Configuration)
-    .ConfigureServices();
+    .ConfigureServices()
+    .ConfigureRepositories();
 
 var defaultCulture = new RequestCulture("ru-RU", "ru-RU");
 var supportedCultures = new List<CultureInfo> { new("ru-RU"), new("kk-KZ"), };
@@ -46,13 +47,13 @@ var localizationOptions =
 
 var app = builder.Build();
 
-app.UseSwagger();
-app.UseSwagger();
-app.UseSwaggerUI(options =>
-{
-    options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
-    options.RoutePrefix = "swagger";
-});
+
+app.UseSwagger()
+    .UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
+        options.RoutePrefix = "swagger";
+    });
 
 app.MapControllers();
 app.UseHttpsRedirection();
