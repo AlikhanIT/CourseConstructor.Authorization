@@ -9,10 +9,12 @@ namespace CourseConstructor.Authorization.Infrastructrure.Persistance;
 public class Context : DbContext, IContext
 {
     private readonly IDateTimeProvider _dateTimeProvider;
-    public Context(DbContextOptions<Context> options, IDateTimeProvider dateTimeProvider) 
+    public Context(
+        DbContextOptions<Context> options, 
+        IDateTimeProvider dateTimeProvider) 
         :base(options)
     {
-        Database.EnsureCreated();
+        _dateTimeProvider = dateTimeProvider;
     }
     public DbSet<User> Users { get; set; }
 

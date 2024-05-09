@@ -1,5 +1,4 @@
-﻿using CourseConstructor.Authorization.Core.Interfaces;
-using CourseConstructor.Authorization.Core.Interfaces.Persistance;
+﻿using CourseConstructor.Authorization.Core.Interfaces.Persistance;
 using CourseConstructor.Authorization.Core.Interfaces.Repositories;
 using CourseConstructor.Authorization.Core.Interfaces.Services;
 using CourseConstructor.Authorization.Infrastructrure.Persistance;
