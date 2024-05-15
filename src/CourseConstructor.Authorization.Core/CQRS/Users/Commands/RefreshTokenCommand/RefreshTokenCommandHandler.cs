@@ -38,7 +38,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         }
 
         var user = await _userRepository.GetByIdAsync(request.UserId);
-        bool isValid = _jwtTokenService.ValidateRefreshToken(request.RefreshToken);
+        bool isValid = _jwtTokenService.ValidateToken(request.RefreshToken);
 
         if (user == null || user.RefreshToken != request.RefreshToken || !isValid)
         {

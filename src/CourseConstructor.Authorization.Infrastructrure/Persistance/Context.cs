@@ -14,6 +14,7 @@ public class Context : DbContext, IContext
         IDateTimeProvider dateTimeProvider) 
         :base(options)
     {
+        Database.EnsureCreated();
         _dateTimeProvider = dateTimeProvider;
     }
     public DbSet<User> Users { get; set; }

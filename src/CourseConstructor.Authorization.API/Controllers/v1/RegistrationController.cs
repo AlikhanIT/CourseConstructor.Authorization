@@ -127,5 +127,21 @@ namespace CourseConstructor.Authorization.API.Controllers.v1
                 return BadRequest(result);
             }
         }
+        
+        /// <summary>
+        /// Валидирует access-token
+        /// </summary>
+        /// <param name="accessToken">Токен доступа.</param>
+        /// <returns>Новый JWT токен при корректном рефреш-токене.</returns>
+        [HttpGet("validate/{accessToken}")]
+        [ProducesResponseType(typeof(bool), 200)]
+        [AllowAnonymous]
+        public async Task<IActionResult> ValidateToken(string accessToken)
+        {
+            _logger.LogInformation("Начало процесса проверки токена.");
+            var result = await _sender.Send(new ValidateTokenCommand(accessToken));
+
+            return Ok(result.Value);
+        }
     }
 }

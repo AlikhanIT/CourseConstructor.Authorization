@@ -78,8 +78,7 @@ public class JwtTokenService : IJwtTokenService
 
         return principal;
     }
-    
-    public bool ValidateRefreshToken(string refreshToken)
+    public bool ValidateToken(string accessToken)
     {
         var tokenValidationParameters = new TokenValidationParameters
         {
@@ -89,32 +88,31 @@ public class JwtTokenService : IJwtTokenService
             ValidIssuer = _jwtTokenSettingsOptions.Issuer,
             ValidateAudience = true,
             ValidAudience = _jwtTokenSettingsOptions.Audience,
-            ValidateLifetime = false
+            ValidateLifetime = true, 
+            ClockSkew = TimeSpan.Zero 
         };
 
         var tokenHandler = new JwtSecurityTokenHandler();
         try
         {
-            var claimsPrincipal = tokenHandler.ValidateToken(refreshToken, tokenValidationParameters, out var securityToken);
-            var jwtToken = securityToken as JwtSecurityToken;
-
-            if (jwtToken?.Payload.Exp != null)
-            {
-                var exp = DateTimeOffset.FromUnixTimeSeconds((long)jwtToken.Payload.Exp.Value).UtcDateTime;
-                if (exp >= DateTime.UtcNow) return true;
-                
-                _logger.LogWarning("Рефреш-токен истек.");
-                return false;
-
-            }
-
-            _logger.LogWarning("Поле exp отсутствует в рефреш-токене.");
+            tokenHandler.ValidateToken(accessToken, tokenValidationParameters, out var securityToken);
+            return securityToken is JwtSecurityToken jwtSecurityToken && jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase);
+        }
+        catch (SecurityTokenExpiredException)
+        {
+            _logger.LogWarning("Токен доступа истек.");
+            return false;
+        }
+        catch (SecurityTokenValidationException ex)
+        {
+            _logger.LogWarning("Ошибка валидации токена доступа: {Message}", ex.Message);
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning("Ошибка проверки рефреш-токена: {Message}", ex.Message);
+            _logger.LogError("Ошибка при валидации токена: {Message}", ex.Message);
             return false;
         }
     }
+
 }

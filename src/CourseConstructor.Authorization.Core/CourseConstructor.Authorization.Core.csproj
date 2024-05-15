@@ -34,7 +34,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="CQRS\Users\Queries\" />
       <Folder Include="Entities\Requests\" />
       <Folder Include="Resources\Models\" />
     </ItemGroup>
