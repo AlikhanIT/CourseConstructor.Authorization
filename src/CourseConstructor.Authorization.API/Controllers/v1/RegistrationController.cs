@@ -143,5 +143,21 @@ namespace CourseConstructor.Authorization.API.Controllers.v1
 
             return Ok(result.Value);
         }
+        
+        /// <summary>
+        /// Получение информации о пользователе
+        /// </summary>
+        /// <param name="accessToken">Токен доступа.</param>
+        /// <returns>Информация о пользователе.</returns>
+        [HttpGet("user-info/{accessToken}")]
+        [ProducesResponseType(typeof(bool), 200)]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetUserInfo(string accessToken)
+        {
+            _logger.LogInformation("Начало получения информации о пользователе по токену.");
+            var result = await _sender.Send(new GetUserInfoQuery(accessToken));
+
+            return Ok(result.Value);
+        }
     }
 }

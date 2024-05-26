@@ -8,4 +8,5 @@ public interface IJwtTokenService
     JwtToken GenerateTokens(string userId, IEnumerable<Claim> claims);
     ClaimsPrincipal GetPrincipalFromExpiredToken(string token);
     bool ValidateToken(string refreshToken);
+    string? GetUserIdFromToken(string token);
 }

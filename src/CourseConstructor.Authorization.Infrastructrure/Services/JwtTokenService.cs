@@ -114,5 +114,58 @@ public class JwtTokenService : IJwtTokenService
             return false;
         }
     }
+/// <summary>
+    /// Извлекает идентификатор пользователя из предоставленного JWT токена.
+    /// </summary>
+    /// <param name="token">JWT токен, из которого необходимо извлечь идентификатор пользователя.</param>
+    /// <returns>Идентификатор пользователя, если токен действителен; в противном случае, null.</returns>
+    public string? GetUserIdFromToken(string token)
+    {
+        try
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var validationParameters = GetTokenValidationParameters();
 
+            var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
+
+            if (validatedToken is not JwtSecurityToken jwtToken)
+            {
+                _logger.LogWarning("Недействительный JWT токен.");
+                return null;
+            }
+
+            var userIdClaim = principal.FindFirst("uid") ?? principal.FindFirst(ClaimTypes.Name);
+
+            if (userIdClaim != null)
+            {
+                return userIdClaim.Value;
+            }
+            _logger.LogWarning("Утверждение с идентификатором пользователя не найдено в токене.");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("Произошло исключение при извлечении идентификатора пользователя из токена: {Message}", ex.Message);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Возвращает параметры валидации токена.
+    /// </summary>
+    /// <returns>Параметры валидации TokenValidationParameters, используемые для проверки JWT токенов.</returns>
+    private TokenValidationParameters GetTokenValidationParameters()
+    {
+        return new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtTokenSettingsOptions.SecretKey)),
+            ValidateIssuer = true,
+            ValidIssuer = _jwtTokenSettingsOptions.Issuer,
+            ValidateAudience = true,
+            ValidAudience = _jwtTokenSettingsOptions.Audience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+    }
 }
